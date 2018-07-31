@@ -117,8 +117,10 @@ function decode_button(data) {
 
 				case 'kodi' : { // Kodi version
 					switch (status.bmbt.last.action + status.bmbt.last.button) {
-						case 'depressphone'  : kodi.command('toggle'); break;
-
+						//toggle is pause/play
+						case 'depressclock'  : kodi.command('toggle'); break;
+						case 'depressphone'  : kodi.input('menu');		break;
+						case 'depressfm'	:	kodi.input('esc');		break;
 						case 'depressleft'  : kodi.command('previous'); break;
 						case 'depressright' : kodi.command('next');     break;
 
@@ -143,7 +145,7 @@ function decode_button(data) {
 				case 'depress6' : LCM.police(true);  break;
 
 				case 'depressmode' : {
-					// To use holding the phone button in to toggle RPi display on/off
+					// To use holding the mode button in to toggle RPi display on/off
 					update.status('hdmi.rpi.power_override', true);
 					hdmi_rpi.command('toggle');
 
