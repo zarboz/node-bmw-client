@@ -117,10 +117,8 @@ function decode_button(data) {
 
 				case 'kodi' : { // Kodi version
 					switch (status.bmbt.last.action + status.bmbt.last.button) {
-						//toggle is pause/play
-						case 'depressclock'  : kodi.command('toggle'); break;
-						case 'depressphone'  : kodi.input('menu');		break;
-						case 'depressfm'	:	kodi.input('esc');		break;
+						case 'depressphone'  : kodi.input('menu'); break;
+
 						case 'depressleft'  : kodi.command('previous'); break;
 						case 'depressright' : kodi.command('next');     break;
 
@@ -145,7 +143,7 @@ function decode_button(data) {
 				case 'depress6' : LCM.police(true);  break;
 
 				case 'depressmode' : {
-					// To use holding the mode button in to toggle RPi display on/off
+					// To use holding the phone button in to toggle RPi display on/off
 					update.status('hdmi.rpi.power_override', true);
 					hdmi_rpi.command('toggle');
 
@@ -155,6 +153,22 @@ function decode_button(data) {
 				case 'depressgt menu' : {
 					// To use pressing the BMBT menu button (right side) to force the DSP amp on
 					RAD.audio_power('on');
+				}
+
+				case 'depressclock' : {
+					kodi.input('prev');
+				}
+
+				case 'depressfm' : {
+					kodi.input('left');
+				}
+
+				case 'depressam' : {
+					kodi.input('right');
+				}
+
+				case 'depress<>' : {
+					kodi.command('toggle');
 				}
 			}
 
