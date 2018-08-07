@@ -153,27 +153,6 @@ function decode_button(data) {
 				case 'depressgt menu' : {
 					// To use pressing the BMBT menu button (right side) to force the DSP amp on
 					RAD.audio_power('on');
-					break;
-				}
-
-				case 'depressclock' : {
-					kodi.input('prev');
-					break;
-				}
-
-				case 'depressfm' : {
-					kodi.input('left');
-					break;
-				}
-
-				case 'depressam' : {
-					kodi.input('right');
-					break;
-				}
-
-				case 'depress<>' : {
-					kodi.command('toggle');
-					break;
 				}
 			}
 
