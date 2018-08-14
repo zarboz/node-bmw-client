@@ -117,7 +117,7 @@ function decode_button(data) {
 
 				case 'kodi' : { // Kodi version
 					switch (status.bmbt.last.action + status.bmbt.last.button) {
-						case 'depressphone'  : kodi.input('menu'); break;
+						case 'depressphone'  : kodi.command('toggle'); break;
 
 						case 'depressleft'  : kodi.command('previous'); break;
 						case 'depressright' : kodi.command('next');     break;
@@ -125,7 +125,9 @@ function decode_button(data) {
 						case 'depressknob' : kodi.input('in'); break;
 
 						case 'holdleft'  : kodi.command('toggle'); break; // This resumes normal playback after doing fast-forward or fast-reverse when lifting off the button
-						case 'holdright' : kodi.command('toggle');
+						case 'holdright' : kodi.command('toggle'); break;
+						case 'depressclock' : kodi.input('menu'); break;
+						case 'depressinfo' : kodi.input('radio'); 
 					}
 
 					break;
