@@ -849,9 +849,8 @@ function drl_lights() {
 		}
 		case true : {
 		io_encode(config.lights.drl_lights);
-		break;
 		}
-	} 
+	} break;
 }
 // Police lights!
 function pl() {
