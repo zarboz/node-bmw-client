@@ -69,6 +69,30 @@ function parse_out(data) {
 			break;
 		}
 
+		case 0x34E : { // NBT1 navigation information
+			data.command = 'bro';
+			data.value   = 'Navigation system information';
+
+			// Bounce if this data is already on K-CAN (can1)
+			// if (data.bus === 'can1') break;
+
+			// // Forward to can1
+			// bus.data.send({
+			// 	bus  : 'can1',
+			// 	id   : data.src.id,
+			// 	data : Buffer.from(data.msg),
+			// });
+
+			break;
+		}
+
+		case 0x38D : return;
+		case 0x5E3 : {
+			data.command = 'bro';
+			data.value   = 'Services';
+			break;
+		}
+
 		case 0x12F :
 		case 0x4F8 : data = decode_ignition(data); break;
 
@@ -154,9 +178,6 @@ function status_module() {
 
 	// Send message
 	bus.data.send(msg);
-
-	// When this command fires, also update backlight value
-	// FEM1.backlight();
 }
 
 // Ignition status
@@ -176,6 +197,13 @@ function status_ignition() {
 				log.module('Unset ignition status timeout');
 			}
 
+			// Send ignition off message
+			bus.data.send({
+				bus  : config.nbt1.can_intf,
+				id   : 0x12F,
+				data : Buffer.from([ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ]),
+			});
+
 			// Return here since we're not re-sending again
 			return;
 		}
@@ -185,7 +213,7 @@ function status_ignition() {
 				log.module('Set ignition status timeout');
 			}
 
-			NBT1.timeout.status_ignition = setTimeout(status_ignition, 200);
+			NBT1.timeout.status_ignition = setTimeout(status_ignition, 100);
 		}
 	}
 

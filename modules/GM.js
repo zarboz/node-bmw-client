@@ -2,7 +2,7 @@
 
 const EventEmitter = require('events');
 
-// All the possible values to send to the GM
+// All the possible values to send to GM
 // let array_of_possible_values = {
 //   light_alarm                   : true,
 //   light_alarm_blink             : true,
@@ -74,7 +74,7 @@ class GM extends EventEmitter {
 				lock   :  mask.bit4 && !mask.bit5 && !mask.bit6 && !mask.bit8,
 				unlock : !mask.bit4 &&  mask.bit5 && !mask.bit6 && !mask.bit8,
 				trunk  : !mask.bit4 && !mask.bit5 &&  mask.bit6 && !mask.bit8,
-				none   : !mask.bit4 && !mask.bit5 && !mask.bit6 &&  mask.bit8,
+				none   : !mask.bit4 && !mask.bit5 && !mask.bit6,
 			},
 
 			key     : null,
@@ -145,7 +145,7 @@ class GM extends EventEmitter {
 		return data;
 	}
 
-	// [0x7A] Decode a door status message from the GM and act upon the results
+	// [0x7A] Decode a door status message from GM and act upon the results
 	decode_status_open(data) {
 		data.command = 'bro';
 		data.value   = 'door status';
@@ -248,14 +248,14 @@ class GM extends EventEmitter {
 
 
 	// This is just a dumb placeholder
-	// Decode the GM bitmask string and output an array of true/false values
+	// Decode GM bitmask string and output an array of true/false values
 	io_decode(data) {
 		return {
 			seat_driver_backrest_backward : bitmask.test(data[0], bitmask.bit[0]),
 		};
 	}
 
-	// Encode the GM bitmask string from an input of true/false values
+	// Encode GM bitmask string from an input of true/false values
 	// This is just a dumb placeholder
 	io_encode(object) {
 		log.module('Encoding IO status');
@@ -287,6 +287,8 @@ class GM extends EventEmitter {
 
 	// Send message to GM
 	io_set(packet) {
+		if (config.chassis.model !== 'e39') return;
+
 		log.module('Setting IO status');
 
 		// Add 'set IO status' command to beginning of array
@@ -321,6 +323,8 @@ class GM extends EventEmitter {
 
 	// Request various things from GM
 	request(value) {
+		if (config.chassis.model !== 'e39') return;
+
 		// Init variables
 		let src;
 		let cmd;
@@ -441,6 +445,8 @@ class GM extends EventEmitter {
 
 
 	init_listeners() {
+		if (config.chassis.model !== 'e39') return;
+
 		update.on('status.vehicle.ignition', (data) => {
 			switch (data.new) {
 				case 'accessory' : {
