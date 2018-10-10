@@ -644,35 +644,23 @@ function audio_power(power_state) {
 			// DSP powers up with volume set to 0, so bring up volume by configured amount
 			setTimeout(() => {
 				for (let pass = 0; pass < config.rad.power_on_volume; pass++) {
-					setTimeout(() => { volume_control(5); }, 5 * pass);
+					setTimeout(() => { volume_control(5); }, 6 * pass);
 				}
-			}, 250);
+			}, 350);
 		}
 	}
 }
 
 
 function init_listeners() {
+	// Bounce if we're not configured to emulate the RAD module or not in an E39
 	if (config.chassis.model !== 'e39') return;
+	if (config.emulate.rad   !== true)  return;
 
 	// Perform commands on power lib active event
 	update.on('status.power.active', (data) => {
-		// Bounce if we're not configured to emulate the RAD module
-		if (config.emulate.rad !== true) return;
-
-		if (data.new === false) {
-			audio_power(false);
-			return;
-		}
-
-		log.module('Waiting for DSP ready after reset event');
+		setTimeout(() => { audio_power(data.new); }, 150);
 	});
-
-	update.on('status.dsp.reset', (data) => {
-		if (data.new === true) return;
-		setTimeout(() => { audio_power(true); }, 100);
-	});
-
 
 	// Kick DSP amp on engine restart
 	IKE.on('ignition-start-end', () => {
