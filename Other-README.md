@@ -63,7 +63,7 @@ Steps to get running on your pi locally (yes its kind of convoluted deal with it
 1) setup your raspberry pi 3 with raspbian stretch lite sdcard boot it up and get hooked to your wifi run your updates and upgrades continue to step 2
 2) lets install some stuff well need to support our amazing BMWPiBUS thing lets hope you have 2x Reslers USB adapters and the Pican2 duo (btw you need to configure your pican) ........ open up your pi via ssh / keyboard and screen however youd like to interface.
 3) run some apt-get installs..... you need these packages :  
-  3) run this in your terminal: `sudo apt-get install pigpio libdbus-1-dev git-core nginx pulseaudio pulseaudio-module-bluetooth`
+  3) run this in your terminal: `sudo apt-get install pigpio libdbus-1-dev git-core nginx `
 4) now we installed our binaries lets install node and npm so we can setup this cool app... navigate to nodejs.org and click the downloads tab at the top of the main page then select CURRENT (at time of writing version is 10.4.0)
 5) once you're on the current page right you need the link for nodejs current for armv7.... i used this : wget https://nodejs.org/dist/v10.4.0/node-v10.4.0-linux-armv7l.tar.xz
 6) unpack node .... 
