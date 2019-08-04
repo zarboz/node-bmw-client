@@ -54,7 +54,7 @@ I assume these things
  4b) All I have hooked up RIGHT NOW is the iBUS connection im waiting for my PiCan Duo2 and other Reslers USB to show up 
 
 Lets start by this:
-What year E39 do you have?? This is important AF cuz 97-99 have lots to add... late 99-00 has a few things to add 01+ has very little to add in terms of wiring 
+What year E39/E46/E60 do you have?? This is important AF cuz 97-99 have lots to add... late 99++ has a few things to add 01+ has very little to add in terms of wiring 
 
 
 
@@ -201,42 +201,3 @@ The system.d scripts we enabled in step 9 will kick on the interface and the cro
 
 
 
-# OPTIONAL SETUP INSTRUCTIONS:
-
-if you wanna use a DAC card and bluetooth with this you need to install some other items as well
-```
-
-sudo apt-get install bluez bluez-tools pulseaudio pulseaudio-module-bluetooth
-```
-
-you also have to start pulseaduio at boot now 
-
-```
-nano /etc/systemd/system/pulseaudio.service
-```
-then copy and paste this:
-
-```
-[Unit]
-Description=Pulse Audio
-
-[Service]
-Type=simple
-ExecStart=/usr/bin/pulseaudio --system --disallow-exit --disable-shm --exit-idle-time=-1
-
-[Install]
-WantedBy=multi-user.target
-```
-
-press ctrl + x and hit enter and type the letter Y to save
-
-
-then run these commands
-```
-sudo systemctl enable pulseaudio
-sudo systemctl start pulseaudio
-
-```
-if you have an iPhone volume control doesnt work without some extra hackery as well as some other quirks
-
-i blame apple
