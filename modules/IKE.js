@@ -1208,7 +1208,8 @@ class IKE extends EventEmitter {
 		let message_hex;
 
 		// message_hex = [ 0x23, 0x42, 0x30 ];
-		message_hex = [ 0x23, 0x41, 0x30, 0x07 ];
+		//message_hex = [ 0x23, 0x41, 0x30, 0x07 ];
+		message_hex = [ 0x23, 0x62, 0x30, 0x00 ];
 
 		message_hex = message_hex.concat(this.text_prepare(message));
 
