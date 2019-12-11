@@ -877,20 +877,20 @@ function welcome_lights(action, override = false) {
 // Police lights!
 function pl() {
 	if (status.lcm.police_lights.counts.loop >= config.lights.police_lights.limit || status.lcm.police_lights.ok !== true) {
-		update.status('lcm.police_lights.ok', false, false);
+		update.status('lcm.police_lights.ok', false);
 
 		clearTimeout(LCM.timeout.lights_police);
 		LCM.timeout.lights_police = null;
 
 		io_encode({});
 
-		if (update.status('lcm.police_lights.on', false, false)) {
+		if (update.status('lcm.police_lights.on', false)) {
 			setTimeout(IKE.text_urgent_off, 1000);
 		}
 		return;
 	}
 
-	if (update.status('lcm.police_lights.on', true, false)) {
+	if (update.status('lcm.police_lights.on', true)) {
 		IKE.text_warning('   Police lights!   ', 0);
 	}
 
@@ -898,8 +898,7 @@ function pl() {
 		front : {
 			left : {
 				fog      : false,
-				highbeam : false,
-				// highbeam : pl_check([ 0, 2, 8, 16, 18, 24 ]),
+				highbeam : pl_check([ 0, 2, 8, 16, 18, 24 ]),
 				lowbeam  : false,
 				standing : pl_check([ 0, 2, 8, 16, 18, 24 ]),
 				turn     : pl_check([ 4, 6, 10, 20, 22, 26 ]),
@@ -908,8 +907,7 @@ function pl() {
 			},
 			right : {
 				fog      : false,
-				highbeam : false,
-				// highbeam : pl_check([ 4, 6, 10, 20, 22, 26 ]),
+				highbeam : pl_check([ 4, 6, 10, 20, 22, 26 ]),
 				lowbeam  : false,
 				standing : pl_check([ 4, 6, 10, 20, 22, 26 ]),
 				turn     : pl_check([ 0, 2, 8, 16, 18, 24 ]),
@@ -954,8 +952,8 @@ function pl() {
 		output_standing_inner_rear_left  : object.rear.left.standing,
 		output_standing_inner_rear_right : object.rear.right.standing,
 
-		output_standing_rear_left  : object.rear.right.standing,
-		output_standing_rear_right : object.rear.left.standing,
+		output_standing_rear_left  : object.rear.left.standing,
+		output_standing_rear_right : object.rear.right.standing,
 
 		output_brake_rear_left   : object.rear.left.brake,
 		output_brake_rear_middle : object.rear.middle.brake,
@@ -979,11 +977,11 @@ function pl() {
 
 	io_encode(io_object);
 
-	update.status('lcm.police_lights.counts.main', (status.lcm.police_lights.counts.main + 1));
+	update.status('lcm.police_lights.counts.main', (status.lcm.police_lights.counts.main + 1), false);
 
 	if (status.lcm.police_lights.counts.main === 32) {
-		update.status('lcm.police_lights.counts.main', 0);
-		update.status('lcm.police_lights.counts.loop', (status.lcm.police_lights.counts.loop + 1), false);
+		update.status('lcm.police_lights.counts.main', 0, false);
+		update.status('lcm.police_lights.counts.loop', (status.lcm.police_lights.counts.loop + 1));
 	}
 
 	LCM.timeout.lights_police = setTimeout(pl, config.lights.police_lights.delay);
@@ -995,7 +993,7 @@ function pl_check(data) {
 }
 
 function police(action = false) {
-	update.status('lcm.police_lights.ok', action, false);
+	update.status('lcm.police_lights.ok', action);
 
 	if (status.lcm.police_lights.on === action) return;
 
