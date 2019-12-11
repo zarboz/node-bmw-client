@@ -1,7 +1,5 @@
 // Parse data sent to module
 function parse_in(data) {
-	// if (DIA.last.cmd === 'con') return objfmt(data);
-
 	if (data.src.upper === 'LCM') LCM.parse_out(data);
 
 	switch (DIA.last.val) {
@@ -81,12 +79,6 @@ function parse_out(data) {
 		case 0xB8 : {
 			data.command = 'req';
 			data.value   = 'motor-values';
-			break;
-		}
-
-		default : {
-			data.command = 'unk';
-			data.value   = Buffer.from(data.msg);
 		}
 	}
 
@@ -97,7 +89,7 @@ function parse_out(data) {
 		val : data.value,
 	};
 
-	log.bus(data);
+	return data;
 }
 
 module.exports = {

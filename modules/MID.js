@@ -11,7 +11,7 @@ const pad = require('pad');
 // 68 C0 21 00 15 06 2F 2F 2F 2F 05 2F 2F 2F 2F 05 2F 2F 2F 2F 05 2F 2F 2F 2F 05 2F 2F 2F 2F 05 2F 2F 2F 2F CK
 
 function refresh_text() {
-	if (config.chassis.model !== 'e39') return;
+	if (config.intf.ibus.enabled !== true) return;
 
 	if (status.vehicle.ignition_level < 1 || config.media.mid !== true) return;
 
@@ -21,7 +21,7 @@ function refresh_text() {
 
 	// Upper left - 11 char radio display
 	message_hex = [ 0x23, 0x40, 0x20 ];
-	message_hex = message_hex.concat(hex.a2h(pad(status.mid.text_left, 11).substring(0, 11)));
+	message_hex = message_hex.concat(hex.a2h(pad(status.mid.text.left, 11).substring(0, 11)));
 
 	bus.data.send({
 		src : 'RAD',
@@ -30,7 +30,7 @@ function refresh_text() {
 
 	// Upper right - 20 char OBC display
 	message_hex = [ 0x23, 0x40, 0x20 ];
-	message_hex = message_hex.concat(hex.a2h(pad(20, status.mid.text_right.substring(0, 20))));
+	message_hex = message_hex.concat(hex.a2h(pad(20, status.mid.text.right.substring(0, 20))));
 
 	bus.data.send({
 		src : 'IKE',
@@ -78,9 +78,9 @@ function refresh_text() {
 
 // Set or unset the text interval
 function text_loop(action) {
-	if (config.media.mid              !==   true) return;
-	if (status.vehicle.ignition_level  <       1) action = false;
-	if (MID.status.text_loop          === action) return;
+	if (status.vehicle.ignition_level < 1) action = false;
+
+	if (config.media.mid !== true || MID.status.text_loop === action) return;
 
 	log.module('Text loop ' + action);
 
@@ -119,23 +119,23 @@ function status_loop(action) {
 		case false : {
 			clearInterval(MID.interval.status_loop);
 
-			// Set status variables
+			// Update status object
 			MID.status.status_loop = false;
 
-			update.status('rad.source_name', 'off');
+			update.status('rad.source_name', 'off', false);
 
-			update.status('dsp.reset',  true);
-			update.status('dsp.ready',  false);
-			update.status('dspc.reset', true);
-			update.status('dspc.ready', false);
-			update.status('rad.reset',  true);
-			update.status('rad.ready',  false);
+			update.status('dsp.reset',  true,  false);
+			update.status('dsp.ready',  false, false);
+			update.status('dspc.reset', true,  false);
+			update.status('dspc.ready', false, false);
+			update.status('rad.reset',  true,  false);
+			update.status('rad.ready',  false, false);
 
 			break;
 		}
 
 		case true : {
-			// Set status variable
+			// Update status object
 			MID.status.status_loop = true;
 
 			// Send a couple through to prime the pumps
@@ -187,19 +187,19 @@ function parse_in(data) {
 		}
 	}
 
-	log.bus(data);
+	return data;
 }
 
 // Parse data sent from MID module
 function parse_out(data) {
 	switch (data.msg[0]) {
-		case 0x20 : { // Broadcast : { Display status
+		case 0x20 : { // Broadcast : Display status
 			data.command = 'bro';
 			data.value   = 'display status: ';
 			break;
 		}
 
-		case 0x31 : { // Broadcast : { Button pressed
+		case 0x31 : { // Broadcast : Button pressed
 			data.command = 'bro';
 			data.value   = 'button pressed: ' + data.msg[1] + ' ' + data.msg[2] + ' ' + data.msg[3];
 
@@ -309,31 +309,25 @@ function parse_out(data) {
 			break;
 		}
 
-		case 0x47 : { // Broadcast : { BM status
+		case 0x47 : { // Broadcast : BM status
 			data.command = 'bro';
 			data.value   = 'BM status';
 			break;
 		}
 
-		case 0x48 : { // Broadcast : { BM button
+		case 0x48 : { // Broadcast : BM button
 			data.command = 'bro';
 			data.value   = 'BM button';
 			break;
 		}
-
-		default : {
-			data.command = 'unk';
-			data.value   = Buffer.from(data.msg);
-			break;
-		}
 	}
 
-	log.bus(data);
+	return data;
 }
 
 // Emulate button presses
 function button(button) {
-	if (config.chassis.model !== 'e39') return;
+	if (config.intf.ibus.enabled !== true) return;
 
 	let button_down = 0x00;
 	let button_hold;
@@ -377,12 +371,12 @@ function button(button) {
 }
 
 function init_listeners() {
-	if (config.chassis.model !== 'e39') return;
+	if (config.intf.ibus.enabled !== true) return;
 
 	// Perform commands on power lib active event
-	update.on('status.power.active', (data) => {
-		status_loop(data.new);
-		text_loop(data.new);
+	power.on('active', (power_state) => {
+		status_loop(power_state);
+		text_loop(power_state);
 	});
 
 	log.msg('Initialized listeners');
@@ -400,12 +394,18 @@ module.exports = {
 		text_loop   : false,
 	},
 
-	button                : button,
-	init_listeners        : init_listeners,
-	parse_in              : parse_in,
-	parse_out             : parse_out,
-	refresh_text          : refresh_text,
-	status_loop           : status_loop,
-	text_loop             : text_loop,
+
+	button : button,
+
+	init_listeners : init_listeners,
+
+	parse_in  : parse_in,
+	parse_out : parse_out,
+
+	refresh_text : refresh_text,
+
+	status_loop : status_loop,
+	text_loop   : text_loop,
+
 	toggle_power_if_ready : toggle_power_if_ready,
 };

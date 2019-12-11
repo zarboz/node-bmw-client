@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+DIR_BASE="/usr/local"
+DIR_BMWCD="${DIR_BASE}/bmwcd"
+DIR_BAK="${DIR_BMWCD}/json.bak"
+
+DATE_STR="$(date '+%Y%m%d')"
+
+ARRAY_FILES=(
+'config.json'
+'status.json'
+)
+
+
+[[ ! -d "${DIR_BMWCD}" ]] && exit 0
+
+cd "${DIR_BMWCD}" || exit 1
+
+mkdir -p "${DIR_BAK}" || exit 2
+
+for JSON_FILE in "${ARRAY_FILES[@]}"; do
+	[[ ! -s "${JSON_FILE}" ]] && continue
+	cp -v "${JSON_FILE}" "${DIR_BAK}/${JSON_FILE}.${DATE_STR}"
+done

@@ -1,6 +1,9 @@
 /* eslint key-spacing : 0 */
+/* eslint no-console  : 0 */
+
 
 const EventEmitter = require('events');
+
 
 // All the possible values to send to GM
 // let array_of_possible_values = {
@@ -45,6 +48,24 @@ const EventEmitter = require('events');
 
 
 class GM extends EventEmitter {
+	// Reply: Diagnostic command acknowledged
+	decode_dia_reply(data) {
+		data.command = 'rep';
+		data.value   = 'TODO diagnostic command ack';
+
+		return data;
+	}
+
+	// Broadcast: Seat memory data
+	decode_seat_memory(data) {
+		data.command = 'bro';
+		data.value   = 'TODO seat memory data';
+
+		return data;
+	}
+
+
+	// Broadcast: 'Crash alarm'
 	decode_status_crash_alarm(data) {
 		data.command = 'bro';
 		data.value   = 'crash alarm - ';
@@ -57,6 +78,7 @@ class GM extends EventEmitter {
 		return data;
 	}
 
+	// Broadcast: Key fob status
 	// [0x72] Decode a key fob bitmask message, and act upon the results
 	decode_status_keyfob(data) {
 		data.command = 'bro';
@@ -106,20 +128,20 @@ class GM extends EventEmitter {
 		}
 
 
-		// Update status variables
-		update.status('gm.keyfob.low_batt', keyfob.low_batt);
+		// Update status object
+		update.status('gm.keyfob.low_batt', keyfob.low_batt, false);
 
-		update.status('gm.keyfob.button',         keyfob.button);
-		update.status('gm.keyfob.buttons.lock',   keyfob.buttons.lock);
-		update.status('gm.keyfob.buttons.none',   keyfob.buttons.none);
-		update.status('gm.keyfob.buttons.trunk',  keyfob.buttons.trunk);
-		update.status('gm.keyfob.buttons.unlock', keyfob.buttons.unlock);
+		update.status('gm.keyfob.button',         keyfob.button,         false);
+		update.status('gm.keyfob.buttons.lock',   keyfob.buttons.lock,   false);
+		update.status('gm.keyfob.buttons.none',   keyfob.buttons.none,   false);
+		update.status('gm.keyfob.buttons.trunk',  keyfob.buttons.trunk,  false);
+		update.status('gm.keyfob.buttons.unlock', keyfob.buttons.unlock, false);
 
-		update.status('gm.keyfob.key',       keyfob.key);
-		update.status('gm.keyfob.keys.key0', keyfob.keys.key0);
-		update.status('gm.keyfob.keys.key1', keyfob.keys.key1);
-		update.status('gm.keyfob.keys.key2', keyfob.keys.key2);
-		update.status('gm.keyfob.keys.key3', keyfob.keys.key3);
+		update.status('gm.keyfob.key',       keyfob.key,       false);
+		update.status('gm.keyfob.keys.key0', keyfob.keys.key0, false);
+		update.status('gm.keyfob.keys.key1', keyfob.keys.key1, false);
+		update.status('gm.keyfob.keys.key2', keyfob.keys.key2, false);
+		update.status('gm.keyfob.keys.key3', keyfob.keys.key3, false);
 
 
 		// Emit keyfob event
@@ -145,57 +167,58 @@ class GM extends EventEmitter {
 		return data;
 	}
 
+	// Broadcast: Opened doors (flaps)/windows status
 	// [0x7A] Decode a door status message from GM and act upon the results
-	decode_status_open(data) {
+	decode_status_opened(data) {
 		data.command = 'bro';
 		data.value   = 'door status';
 
 		// Set status from message by decoding bitmask
-		update.status('doors.front_left',  bitmask.test(data.msg[1], 0x01));
-		update.status('doors.front_right', bitmask.test(data.msg[1], 0x02));
-		update.status('doors.hood',        bitmask.test(data.msg[2], 0x40));
-		update.status('doors.rear_left',   bitmask.test(data.msg[1], 0x04));
-		update.status('doors.rear_right',  bitmask.test(data.msg[1], 0x08));
-		update.status('doors.trunk',       bitmask.test(data.msg[2], 0x20));
+		update.status('doors.front_left',  bitmask.test(data.msg[1], 0x01), false);
+		update.status('doors.front_right', bitmask.test(data.msg[1], 0x02), false);
+		update.status('doors.hood',        bitmask.test(data.msg[2], 0x40), false);
+		update.status('doors.rear_left',   bitmask.test(data.msg[1], 0x04), false);
+		update.status('doors.rear_right',  bitmask.test(data.msg[1], 0x08), false);
+		update.status('doors.trunk',       bitmask.test(data.msg[2], 0x20), false);
 
-		update.status('lights.interior', bitmask.test(data.msg[1], 0x40));
+		update.status('lights.interior', bitmask.test(data.msg[1], 0x40), false);
 
-		update.status('windows.front_left',  bitmask.test(data.msg[2], 0x01));
-		update.status('windows.front_right', bitmask.test(data.msg[2], 0x02));
-		update.status('windows.rear_left',   bitmask.test(data.msg[2], 0x04));
-		update.status('windows.rear_right',  bitmask.test(data.msg[2], 0x08));
-		update.status('windows.roof',        bitmask.test(data.msg[2], 0x10));
+		update.status('windows.front_left',  bitmask.test(data.msg[2], 0x01), false);
+		update.status('windows.front_right', bitmask.test(data.msg[2], 0x02), false);
+		update.status('windows.rear_left',   bitmask.test(data.msg[2], 0x04), false);
+		update.status('windows.rear_right',  bitmask.test(data.msg[2], 0x08), false);
+		update.status('windows.roof',        bitmask.test(data.msg[2], 0x10), false);
 
 		// This is correct, in a sense... Not a good sense, but in a sense
-		update.status('vehicle.locked', bitmask.test(data.msg[1], 0x20));
+		update.status('vehicle.locked', bitmask.test(data.msg[1], 0x20), false);
 
 
 		// Set status.doors.closed if all doors are closed
 		let update_closed_doors = (!status.doors.front_left && !status.doors.front_right && !status.doors.rear_left && !status.doors.rear_right);
-		update.status('doors.closed', update_closed_doors);
+		update.status('doors.closed', update_closed_doors, false);
 
-		// Set status.doors.open if any doors are open
-		update.status('doors.open', (update_closed_doors === false));
+		// Set status.doors.opened if any doors are opened
+		update.status('doors.opened', (update_closed_doors === false), false);
 
 		// Set status.doors.sealed if all doors and flaps are closed
 		let update_sealed_doors = (status.doors.closed && !status.doors.hood && !status.doors.trunk);
-		update.status('doors.sealed', update_sealed_doors);
+		update.status('doors.sealed', update_sealed_doors, false);
 
 
 		// Set status.windows.closed if all windows are closed
 		let update_closed_windows = (!status.windows.front_left && !status.windows.front_right && !status.windows.roof && !status.windows.rear_left && !status.windows.rear_right);
-		update.status('windows.closed', update_closed_windows);
+		update.status('windows.closed', update_closed_windows, false);
 
-		// Set status.windows.open if any windows are open
-		update.status('windows.open', (update_closed_windows === false));
+		// Set status.windows.opened if any windows are opened
+		update.status('windows.opened', (update_closed_windows === false), false);
 
 
 		// Set status.vehicle.sealed if all doors and windows are closed
-		update.status('vehicle.sealed', (status.doors.sealed && status.windows.closed));
+		update.status('vehicle.sealed', (status.doors.sealed && status.windows.closed), false);
 
 
-		// Emit open event
-		this.emit('open', {
+		// Emit opened event
+		this.emit('opened', {
 			doors   : status.doors,
 			locked  : status.vehicle.locked,
 			windows : status.windows,
@@ -204,6 +227,7 @@ class GM extends EventEmitter {
 		return data;
 	}
 
+	// Broadcast: Wiper status
 	decode_status_wiper(data) {
 		data.command = 'bro';
 		data.value   = 'wiper status';
@@ -228,7 +252,7 @@ class GM extends EventEmitter {
 		if (!mask.bit0 && !mask.bit1 &&  mask.bit5) data.speed = 'spray';
 
 		// Set speed status var
-		update.status('gm.wipers.speed', data.speed);
+		update.status('gm.wipers.speed', data.speed, false);
 
 
 		data.sensitivity = 0;
@@ -237,7 +261,7 @@ class GM extends EventEmitter {
 		if (mask.bit2  &&  mask.bit3) data.sensitivity = 3;
 
 		// Set sensitivity status var
-		update.status('gm.wipers.sensitivity', data.sensitivity);
+		update.status('gm.wipers.sensitivity', data.sensitivity, false);
 
 
 		// Emit wiper event
@@ -287,9 +311,9 @@ class GM extends EventEmitter {
 
 	// Send message to GM
 	io_set(packet) {
-		if (config.chassis.model !== 'e39') return;
+		if (config.intf.ibus.enabled !== true && config.intf.kbus.enabled !== true) return;
 
-		log.module('Setting IO status');
+		// log.module('Setting IO status');
 
 		// Add 'set IO status' command to beginning of array
 		packet.unshift(0x0C);
@@ -306,7 +330,9 @@ class GM extends EventEmitter {
 		// Send the notification to the log and the cluster
 		let notify_message = 'Toggling door locks';
 		log.module(notify_message);
-		IKE.text_override(notify_message);
+
+		// TODO: Add MID message
+		if (config.gm.text.ike === true) IKE.text_override(notify_message);
 
 		// Hex:
 		// 01 3A 01 : LF unlock (CL)
@@ -317,13 +343,27 @@ class GM extends EventEmitter {
 		// 01 41 01 : Rear lock
 		// 01 42 02 : Rear unlock
 
-		// Init message variable
+		// Send IO set command
 		this.io_set([ 0x00, 0x0B ]);
+		this.io_set([ 0x00, 0x0B, 0x01 ]);
+
+
+		// Really extra send it though
+		setTimeout(() => {
+			this.io_set([ 0x00, 0x0B ]);
+			this.io_set([ 0x00, 0x0B, 0x01 ]);
+
+			// Like, really, really, really extra send it
+			setTimeout(() => {
+				this.io_set([ 0x00, 0x0B ]);
+				this.io_set([ 0x00, 0x0B, 0x01 ]);
+			}, 150);
+		}, 150);
 	}
 
 	// Request various things from GM
 	request(value) {
-		if (config.chassis.model !== 'e39') return;
+		if (config.intf.ibus.enabled !== true && config.intf.kbus.enabled !== true) return;
 
 		// Init variables
 		let src;
@@ -445,17 +485,37 @@ class GM extends EventEmitter {
 
 
 	init_listeners() {
-		if (config.chassis.model !== 'e39') return;
+		if (config.intf.ibus.enabled !== true && config.intf.kbus.enabled !== true) return;
 
+		// Lock and unlock doors automatically on ignition events
 		update.on('status.vehicle.ignition', (data) => {
+			// Return if doors are not closed
+			if (status.doors.closed !== true) return;
+
 			switch (data.new) {
-				case 'accessory' : {
-					switch (data.old) {
-						case 'run' : {
-							// If the doors are closed and locked, toggle door locks
-							if (status.vehicle.locked && status.doors.closed) this.locks();
-						}
-					}
+				case 'off' : {
+					// Return if not previously in accessory position
+					if (data.old !== 'accessory') return;
+
+					// Return if doors are NOT locked
+					if (status.vehicle.locked !== true) return;
+
+					log.module('Doors are locked and closed, toggling door locks');
+
+					setTimeout(() => { this.locks(); }, 500);
+					break;
+				}
+
+				case 'run' : {
+					// Return if not previously in start position
+					if (data.old !== 'start') return;
+
+					// Return if doors are locked
+					if (status.vehicle.locked === true) return;
+
+					log.module('Doors are unlocked and closed, toggling door locks');
+
+					setTimeout(() => { this.locks(); }, 500);
 				}
 			}
 		});
@@ -467,46 +527,17 @@ class GM extends EventEmitter {
 	// Parse data sent from GM module
 	parse_out(data) {
 		switch (data.msg[0]) {
-			case 0x72 : { // Broadcast: Key fob status
-				data = this.decode_status_keyfob(data);
-				break;
-			}
-
-			case 0x76 : { // Broadcast: 'Crash alarm'
-				data = this.decode_status_crash_alarm(data);
-				break;
-			}
-
-			case 0x77 : { // Broadcast: Wiper status
-				data = this.decode_status_wiper(data);
-				break;
-			}
-
-			case 0x78 : { // Broadcast: Seat memory data
-				data.command = 'bro';
-				data.value   = 'TODO seat memory data';
-				break;
-			}
-
-			case 0x7A : { // Broadcast: Open doors (flaps)/windows status
-				data = this.decode_status_open(data);
-				break;
-			}
-
-			case 0xA0 : { // Reply: Diagnostic command acknowledged
-				data.command = 'rep';
-				data.value   = 'TODO diagnostic command ack';
-				break;
-			}
-
-			default : {
-				data.command = 'unk';
-				data.value   = Buffer.from(data.msg);
-			}
+			case 0x72 : return this.decode_status_keyfob(data);
+			case 0x76 : return this.decode_status_crash_alarm(data);
+			case 0x77 : return this.decode_status_wiper(data);
+			case 0x78 : return this.decode_seat_memory(data);
+			case 0x7A : return this.decode_status_opened(data);
+			case 0xA0 : return this.decode_dia_reply(data);
 		}
 
-		log.bus(data);
+		return data;
 	}
 }
+
 
 module.exports = GM;

@@ -1,5 +1,19 @@
 /* eslint key-spacing : 0 */
 
+
+// Decode R/T button message (just a status request if you don't have the module)
+// function decode_button_com(data) {
+// 	data.command = 'con';
+// 	data.value   = 'r/t button - ';
+//
+// 	switch (data.msg[0]) {
+// 		case 0x01 : data.value += 'depress'; break;
+// 		default   : data.value += 'unknown';
+// 	}
+//
+// 	return data;
+// }
+
 // Decode media button action message
 function decode_button_media(data) {
 	data.command = 'con';
@@ -103,9 +117,9 @@ function decode_button_media(data) {
 		}
 	}
 
-	// Update status object with the new data
-	update.status('mfl.last.action', unmask.action);
-	update.status('mfl.last.button', unmask.button);
+	// Update status object
+	update.status('mfl.last.action', unmask.action, false);
+	update.status('mfl.last.button', unmask.button, false);
 
 	return data;
 }
@@ -121,32 +135,6 @@ function decode_button_recirc(data) {
 	}
 
 	return data;
-}
-
-
-// Parse data sent from MFL module
-function parse_out(data) {
-	// 50 B0 01,MFL --> SES: Device status request
-	// 50 C8 01,MFL --> TEL: Device status request
-
-	switch (data.msg[0]) {
-		case 0x3A : { // Button: Recirculation
-			data = decode_button_recirc(data);
-			break;
-		}
-
-		case 0x3B : { // Button: Media
-			data = decode_button_media(data);
-			break;
-		}
-
-		default : {
-			data.command = 'unk';
-			data.value   = Buffer.from(data.msg);
-		}
-	}
-
-	log.bus(data);
 }
 
 
@@ -245,7 +233,26 @@ function translate_button_media(unmask) {
 }
 
 
+// Parse data sent from MFL module
+function parse_out(data) {
+	// 50 B0 01,MFL --> SES: Device status request
+	// 50 C8 01,MFL --> TEL: Device status request
+
+	switch (data.msg[0]) {
+		// case 0x01 : return decode_button_com(data);    // Button: R/T
+		case 0x3A : return decode_button_recirc(data); // Button: Recirculation
+		case 0x3B : return decode_button_media(data);  // Button: Media
+	}
+
+	return data;
+}
+
+
 module.exports = {
+	// decode_button_com    : decode_button_com,
+	decode_button_media  : decode_button_media,
+	decode_button_recirc : decode_button_recirc,
+
 	parse_out : parse_out,
 
 	translate_button_media : translate_button_media,

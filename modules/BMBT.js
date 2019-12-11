@@ -1,5 +1,7 @@
 const module_name = __filename.slice(__dirname.length + 1, -3);
 
+
+// Broadcast: BM button
 // Decode various BMBT button presses
 function decode_button(data) {
 	data.command = 'bro';
@@ -86,15 +88,12 @@ function decode_button(data) {
 
 	data.value += action + ' ' + button;
 
-	// If media control is disabled, return here
-	if (config.bmbt.media === false) return data;
-
 	switch (action) {
 		case 'depress' : {
 			switch (button) {
 				case 'mode' : {
 					// To use depressing the mode button in to toggle RPi display on/off
-					update.status('hdmi.rpi.power_override', true);
+					update.status('hdmi.rpi.power_override', true, false);
 					hdmi_rpi.command('toggle');
 
 					break;
@@ -132,7 +131,7 @@ function decode_button(data) {
 				}
 			}
 
-			// Any version
+			// Controls not dependent on Bluetooth or Kodi being enabled
 			switch (status.bmbt.last.action + status.bmbt.last.button) {
 				case 'depress1' : LCM.police(true); setTimeout(LCM.police, 200); break;
 				case 'depress2' : LCM.police(true); setTimeout(LCM.police, 300); break;
@@ -144,7 +143,7 @@ function decode_button(data) {
 
 				case 'depressmode' : {
 					// To use holding the phone button in to toggle RPi display on/off
-					update.status('hdmi.rpi.power_override', true);
+					update.status('hdmi.rpi.power_override', true, false);
 					hdmi_rpi.command('toggle');
 
 					break;
@@ -171,13 +170,14 @@ function decode_button(data) {
 		}
 	}
 
-	// Update status object with the new data
-	update.status('bmbt.last.action', action);
-	update.status('bmbt.last.button', button);
+	// Update status object
+	update.status('bmbt.last.action', action, false);
+	update.status('bmbt.last.button', button, false);
 
 	return data;
 }
 
+// Broadcast: Cassette status
 function decode_cassette_status(data) {
 	data.command = 'sta';
 	data.value   = 'cassette: ';
@@ -193,6 +193,7 @@ function decode_cassette_status(data) {
 	return data;
 }
 
+// Broadcast: BM knob
 // Decode BMBT knob turns
 function decode_knob(data) {
 	data.command = 'bro';
@@ -229,9 +230,8 @@ function decode_knob(data) {
 
 // Set or unset the status timeout
 function status_loop(action) {
-	if (config.chassis.model !== 'e39') return;
-
-	if (config.emulate.bmbt !== true) return;
+	if (config.intf.ibus.enabled !== true) return;
+	if (config.emulate.bmbt      !== true) return;
 
 	if (status.vehicle.ignition_level < 1) action = false;
 
@@ -241,16 +241,16 @@ function status_loop(action) {
 
 	switch (action) {
 		case false : {
-			update.status('rad.source_name', 'off');
+			update.status('rad.source_name', 'off', false);
 
-			update.status('dsp.reset',  true);
-			update.status('dsp.ready',  false);
-			update.status('dspc.reset', true);
-			update.status('dspc.ready', false);
-			update.status('rad.reset',  true);
-			update.status('rad.ready',  false);
+			update.status('dsp.reset',  true,  false);
+			update.status('dsp.ready',  false, false);
+			update.status('dspc.reset', true,  false);
+			update.status('dspc.ready', false, false);
+			update.status('rad.reset',  true,  false);
+			update.status('rad.ready',  false, false);
 
-			// Set status variable
+			// Update status object
 			BMBT.status_status_loop = false;
 
 			if (BMBT.timeout.status_loop !== null) {
@@ -265,7 +265,7 @@ function status_loop(action) {
 			// Send a couple through to prime the pumps
 			refresh_status();
 
-			// Set status variable
+			// Update status object
 			BMBT.status_status_loop = true;
 
 			log.module('Set status refresh timeout');
@@ -275,7 +275,7 @@ function status_loop(action) {
 
 // Send BMBT status, and request status from RAD
 function refresh_status() {
-	if (config.chassis.model !== 'e39') return;
+	if (config.intf.ibus.enabled !== true) return;
 
 	if (status.vehicle.ignition_level > 0) {
 		log.module('Refreshing status');
@@ -297,9 +297,8 @@ function refresh_status() {
 
 // Send the power on button command if needed/ready
 function toggle_power_if_ready() {
-	if (config.chassis.model !== 'e39') return;
-
-	if (config.emulate.bmbt !== true) return;
+	if (config.intf.ibus.enabled !== true) return;
+	if (config.emulate.bmbt      !== true) return;
 
 	// Only setTimeout if we don't already have one waiting
 	if (BMBT.timeout.power_on !== null) return;
@@ -340,52 +339,10 @@ function toggle_power_if_ready() {
 	}, 1000);
 }
 
-// Parse data sent to BMBT module
-function parse_in(data) {
-	switch (data.msg[0]) {
-		case 0x4A: // Cassette control
-			cassette_status();
-			toggle_power_if_ready();
-			break;
-	}
-}
-
-// Parse data sent from BMBT module
-function parse_out(data) {
-	switch (data.msg[0]) {
-		case 0x47 : { // Broadcast: BM status
-			data = decode_button(data);
-			break;
-		}
-
-		case 0x48 : { // Broadcast: BM button
-			data = decode_button(data);
-			break;
-		}
-
-		case 0x49 : { // Broadcast: BM knob
-			data = decode_knob(data);
-			break;
-		}
-
-		case 0x4B : { // Broadcast: Cassette status
-			data = decode_cassette_status(data);
-			break;
-		}
-
-		default : {
-			data.command = 'unk';
-			data.value   = Buffer.from(data.msg);
-			break;
-		}
-	}
-
-	log.bus(data);
-}
 
 // Say we have no tape in the player
 function cassette_status(value = 0x05) {
-	if (config.chassis.model !== 'e39') return;
+	if (config.intf.ibus.enabled !== true) return;
 
 	bus.data.send({
 		src : module_name,
@@ -396,7 +353,7 @@ function cassette_status(value = 0x05) {
 
 // Emulate button presses
 function button(button) {
-	if (config.chassis.model !== 'e39') return;
+	if (config.intf.ibus.enabled !== true) return;
 
 	let button_down = 0x00;
 	// let button_hold;
@@ -441,15 +398,40 @@ function button(button) {
 	}, 150);
 }
 
+
 function init_listeners() {
-	if (config.chassis.model !== 'e39') return;
+	if (config.intf.ibus.enabled !== true) return;
 
 	// Perform commands on power lib active event
-	update.on('status.power.active', (data) => {
-		status_loop(data.new);
+	power.on('active', (power_state) => {
+		status_loop(power_state);
 	});
 
 	log.msg('Initialized listeners');
+}
+
+
+// Parse data sent to BMBT module
+function parse_in(data) {
+	switch (data.msg[0]) {
+		case 0x4A : { // Cassette control
+			cassette_status();
+			toggle_power_if_ready();
+			break;
+		}
+	}
+}
+
+// Parse data sent from BMBT module
+function parse_out(data) {
+	switch (data.msg[0]) {
+		case 0x47 :
+		case 0x48 : return decode_button(data);
+		case 0x49 : return decode_knob(data);
+		case 0x4B : return decode_cassette_status(data);
+	}
+
+	return data;
 }
 
 
@@ -461,11 +443,17 @@ module.exports = {
 		status_loop : null,
 	},
 
-	button                : button,
-	cassette_status       : cassette_status,
-	init_listeners        : init_listeners,
-	parse_in              : parse_in,
-	parse_out             : parse_out,
-	status_loop           : status_loop,
+
+	button : button,
+
+	cassette_status : cassette_status,
+
+	init_listeners : init_listeners,
+
+	parse_in  : parse_in,
+	parse_out : parse_out,
+
+	status_loop : status_loop,
+
 	toggle_power_if_ready : toggle_power_if_ready,
 };

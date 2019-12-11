@@ -2,6 +2,7 @@
 
 const module_name = __filename.slice(__dirname.length + 1, -3);
 
+
 // Decode type of audio control command
 function decode_audio_control_command(data) {
 	// Base units
@@ -18,7 +19,7 @@ function decode_audio_control_command(data) {
 	// Bounce if bit8 (no bits set) is true
 	if (mask.bit8) {
 		data.value += 'empty value';
-		return;
+		return null;
 	}
 
 	let command;
@@ -145,6 +146,7 @@ function decode_audio_control_command(data) {
 	return command;
 }
 
+// Audio control (i.e. source)
 // Decode various audio control/DSP/EQ commands
 function decode_audio_control(data) {
 	data.command = 'con';
@@ -183,13 +185,15 @@ function decode_audio_control(data) {
 		case 'source' : {
 			switch (cmd_value) {
 				case 0x00 :
-				case 0xA0 : update.status('rad.source_name', 'cd'); break;
+				case 0xA0 : update.status('rad.source_name', 'cd', false); break;
 
 				case 0x01 :
-				case 0xA1 : update.status('rad.source_name', 'tuner/tape'); break;
+				case 0xA1 : update.status('rad.source_name', 'tuner/tape', false); break;
 
 				case 0x0F :
-				case 0xAF : update.status('rad.source_name', 'off');
+				case 0xAF : update.status('rad.source_name', 'off', false); break;
+
+				default : update.status('rad.source_name', 'unknown', false);
 			}
 
 			// Technically not legit
@@ -203,12 +207,13 @@ function decode_audio_control(data) {
 		}
 	}
 
-	// Update status var with interpreted value
-	update.status('rad.' + cmd_type, cmd_value);
+	// Update status object with interpreted value
+	update.status('rad.' + cmd_type, cmd_value, false);
 
 	return data;
 }
 
+// Broadcast: BM button
 function decode_bm_button(data) {
 	let action = 'depress';
 	let button;
@@ -289,6 +294,278 @@ function decode_bm_button(data) {
 	return data;
 }
 
+// Send audio control commands
+function audio_control(command) {
+	if (config.intf.ibus.enabled !== true) return;
+
+	let cmd = 0x36;
+
+	let msgs = {
+		off : [ cmd, 0xAF ],
+
+		dsp : {
+			function_0 : [ cmd, 0xE1 ],
+			function_1 : [ cmd, 0x30 ],
+		},
+
+		source : {
+			cd        : [ cmd, 0xA0 ],
+			tunertape : [ cmd, 0xA1 ],
+		},
+
+	};
+
+
+	let msg;
+
+	switch (command) {
+		case 'cd changer' :
+		case 'cd'         :
+		case 'cd-changer' :
+		case 'cdc'        : {
+			command = 'source cd changer';
+			msg     = msgs.source.cd;
+
+			update.status('rad.source_name', 'cd', false);
+			break;
+		}
+
+		case 'dsp-0' : {
+			command = 'DSP function 0';
+			msg     = msgs.dsp.function_0;
+			break;
+		}
+
+		case 'dsp-1' : {
+			command = 'DSP function 1';
+			msg     = msgs.dsp.function_1;
+			break;
+		}
+
+		case 1            :
+		case true         :
+		case 'tape'       :
+		case 'tuner'      :
+		case 'tuner/tape' :
+		case 'tunertape'  :
+		case 'power on'   :
+		case 'power'      :
+		case 'power-on'   :
+		case 'poweron'    :
+		case 'on'         : {
+			command = 'source tuner/tape';
+			msg     = msgs.source.tunertape;
+
+			update.status('rad.source_name', 'tuner/tape', false);
+			break;
+		}
+
+		case 0           :
+		case false       :
+		case 'off'       :
+		case 'power off' :
+		case 'power-off' :
+		case 'poweroff'  :
+		default          : {
+			command = 'power off';
+			msg     = msgs.off;
+
+			update.status('rad.source_name', 'off', false);
+		}
+	}
+
+	log.module('Sending audio control: ' + command);
+
+	bus.data.send({
+		src : module_name,
+		dst : 'LOC',
+		msg : msg,
+	});
+}
+
+function cassette_control(command) {
+	if (config.intf.ibus.enabled !== true) return;
+
+	let cmd = 0x4A;
+
+	let msgs = {
+		on  : [ cmd, 0xFF ],
+		off : [ cmd, 0x00 ],
+	};
+
+	let msg;
+
+	switch (command) {
+		case 1          :
+		case true       :
+		case 'on'       :
+		case 'power on' :
+		case 'power'    :
+		case 'power-on' :
+		case 'poweron'  : {
+			command = 'power on';
+			msg     = msgs.on;
+			break;
+		}
+
+		case 0           :
+		case false       :
+		case 'off'       :
+		case 'power off' :
+		case 'power-off' :
+		case 'poweroff'  :
+		default          : {
+			command = 'power off';
+			msg     = msgs.off;
+		}
+	}
+
+	log.module('Sending cassette control: ' + command);
+
+	bus.data.send({
+		src : module_name,
+		dst : 'BMBT',
+		msg : msg,
+	});
+}
+
+function volume_control(value = 1) {
+	if (config.intf.ibus.enabled !== true) return;
+
+	let msg_value;
+	switch (value) {
+		case 5 : msg_value = 0x51; break;
+		case 4 : msg_value = 0x41; break;
+		case 3 : msg_value = 0x31; break;
+		case 2 : msg_value = 0x21; break;
+		case 1 : msg_value = 0x11; break;
+
+		case -5 : msg_value = 0x50; break;
+		case -4 : msg_value = 0x40; break;
+		case -3 : msg_value = 0x30; break;
+		case -2 : msg_value = 0x20; break;
+		case -1 : msg_value = 0x10; break;
+
+		default : return;
+	}
+
+	// log.module('Sending volume control: ' + value);
+
+	bus.data.send({
+		src : 'MID',
+		dst : module_name,
+		msg : [ 0x32, msg_value ],
+	});
+}
+
+
+// Power on DSP amp and GPIO pin for amplifier
+function audio_power(power_state = false, volume_increase = true) {
+	if (config.intf.ibus.enabled !== true) return;
+
+	// Bounce if we're not configured to emulate the RAD module
+	if (config.emulate.rad !== true) return;
+
+	switch (power_state) {
+		case 'toggle' : {
+			log.module('Toggling audio power, current source: ' + status.rad.source_name);
+			audio_power((status.rad.source_name === 'off'));
+			return;
+		}
+
+		case 0     :
+		case 'off' :
+		case false : {
+			log.module('Setting audio power to state : ' + power_state);
+
+			audio_control(false);
+			cassette_control(false);
+
+			update.status('dsp.ready', false, false);
+			update.status('dsp.reset', true,  false);
+
+			// Send pause command to Bluetooth device
+			bluetooth.command('pause');
+
+			// Send pause command to Kodi
+			kodi.command('pause');
+
+			break;
+		}
+
+		case 1    :
+		case 'on' :
+		case true : {
+			if (status.power.active !== true) return;
+
+			log.module('Setting audio power to state : ' + power_state);
+
+			// Send device status
+			bus.cmds.send_device_status(module_name);
+
+			// Request status from BMBT, CDC, DSP, and MID (this should be a loop)
+			let array_request = [ 'BMBT', 'CDC', 'DSP', 'MID' ];
+			array_request.forEach((module_request) => {
+				bus.cmds.request_device_status(module_name, module_request);
+			});
+
+			// Set DSP source to whatever is configured
+			audio_control(config.media.dsp.default_source);
+
+			// Turn on BMBT
+			setTimeout(() => { cassette_control(true); }, 250);
+
+
+			// DSP powers up with volume set to 0, so bring up volume by configured amount
+			if (volume_increase === true) {
+				setTimeout(() => {
+					for (let pass = 0; pass < config.rad.power_on_volume; pass++) {
+						setTimeout(() => { volume_control(5); }, 10 * pass);
+					}
+				}, 500);
+			}
+
+
+			// Delay sending EQ command 750ms + 12ms per volume step
+			let dsp_eq_delay = (750 + (12 * config.rad.power_on_volume));
+
+			// Send configured DSP EQ (it seems to forget over time)
+			setTimeout(() => {
+				DSP.eq_encode(config.media.dsp.eq);
+			}, dsp_eq_delay);
+
+
+			// Send play command to Bluetooth device
+			bluetooth.command('play');
+
+			// Send play command to Kodi
+			kodi.command('play');
+		}
+	}
+}
+
+
+function init_listeners() {
+	// Bounce if we're not configured to emulate the RAD module or not in an E39
+	if (config.intf.ibus.enabled !== true) return;
+	if (config.emulate.rad       !== true) return;
+
+	// Perform commands on power lib active event
+	// TODO: Make the delay a config value
+	power.on('active', (power_state) => {
+		setTimeout(() => { audio_power(power_state); }, 300);
+	});
+
+	// Kick DSP amp config.rad.after_start_delay ms after engine start
+	IKE.on('ignition-start-end', () => {
+		// Specify to not increase the volume on this possibly second power on event
+		setTimeout(() => { audio_power(true, false); }, config.rad.after_start_delay);
+	});
+
+
+	log.msg('Initialized listeners');
+}
+
 
 // Parse data sent to RAD module
 function parse_in(data) {
@@ -303,10 +580,7 @@ function parse_in(data) {
 			return data;
 		}
 
-		case 0x48 : { // Broadcast: BM button
-			data = decode_bm_button(data);
-			break;
-		}
+		case 0x48 : return decode_bm_button(data);
 
 		case 0x49 : { // Broadcast: BM knob
 			return data;
@@ -315,11 +589,9 @@ function parse_in(data) {
 		case 0x4B : { // Broadcast: Cassette status
 			return data;
 		}
-
-		default : {
-			return data;
-		}
 	}
+
+	return data;
 }
 
 // Parse data sent from RAD module
@@ -345,19 +617,19 @@ function parse_out(data) {
 					data.value += 'EQ button: M-Audio off';
 					// Not really the right place to set this var
 					// It should be in the status from DSP itself
-					update.status('dsp.m_audio', false);
+					update.status('dsp.m_audio', false, false);
 					break;
 				}
 
 				case 0x91 : {
 					data.value += 'EQ button: M-Audio on';
-					update.status('dsp.m_audio', true);
+					update.status('dsp.m_audio', true, false);
 					break;
 				}
 
 				case 0x95 : {
 					data.value += 'memory set';
-					update.status('dsp.m_audio', false);
+					update.status('dsp.m_audio', false, false);
 					break;
 				}
 
@@ -368,10 +640,7 @@ function parse_out(data) {
 			break;
 		}
 
-		case 0x36 : { // Audio control (i.e. source)
-			data = decode_audio_control(data);
-			break;
-		}
+		case 0x36 : return decode_audio_control(data);
 
 		case 0x38 : { // Control: CD
 			data.command = 'con';
@@ -423,251 +692,9 @@ function parse_out(data) {
 			data.value   = 'screen text TODO';
 			break;
 		}
-
-		default : {
-			data.command = 'unk';
-			data.value   = Buffer.from(data.msg);
-		}
 	}
 
-	log.bus(data);
-}
-
-// Send audio control commands
-function audio_control(command) {
-	if (config.chassis.model !== 'e39') return;
-
-	let cmd = 0x36;
-
-	let msgs = {
-		off : [ cmd, 0xAF ],
-
-		dsp : {
-			function_0 : [ cmd, 0xE1 ],
-			function_1 : [ cmd, 0x30 ],
-		},
-
-		source : {
-			cd        : [ cmd, 0xA0 ],
-			tunertape : [ cmd, 0xA1 ],
-		},
-
-	};
-
-	let msg;
-
-	switch (command) {
-		case 'cd changer' :
-		case 'cd'         :
-		case 'cd-changer' :
-		case 'cdc'        : {
-			command = 'source cd changer';
-			msg     = msgs.source.cd;
-			break;
-		}
-
-		case 'dsp-0' : {
-			command = 'DSP function 0';
-			msg     = msgs.dsp.function_0;
-			break;
-		}
-
-		case 'dsp-1' : {
-			command = 'DSP function 1';
-			msg     = msgs.dsp.function_1;
-			break;
-		}
-
-		case 1            :
-		case true         :
-		case 'tape'       :
-		case 'tuner'      :
-		case 'tuner/tape' :
-		case 'tunertape'  :
-		case 'power on'   :
-		case 'power'      :
-		case 'power-on'   :
-		case 'poweron'    :
-		case 'on'         : {
-			command = 'source tuner/tape';
-			msg     = msgs.source.tunertape;
-			break;
-		}
-
-		case 0           :
-		case false       :
-		case 'off'       :
-		case 'power off' :
-		case 'power-off' :
-		case 'poweroff'  :
-		default          : {
-			command = 'power off';
-			msg     = msgs.off;
-		}
-	}
-
-	log.module('Sending audio control: ' + command);
-
-	bus.data.send({
-		src : module_name,
-		dst : 'LOC',
-		msg : msg,
-	});
-}
-
-function cassette_control(command) {
-	if (config.chassis.model !== 'e39') return;
-
-	let cmd = 0x4A;
-
-	let msgs = {
-		on  : [ cmd, 0xFF ],
-		off : [ cmd, 0x00 ],
-	};
-
-	let msg;
-
-	switch (command) {
-		case 1          :
-		case true       :
-		case 'on'       :
-		case 'power on' :
-		case 'power'    :
-		case 'power-on' :
-		case 'poweron'  : {
-			command = 'power on';
-			msg     = msgs.on;
-			break;
-		}
-
-		case 0           :
-		case false       :
-		case 'off'       :
-		case 'power off' :
-		case 'power-off' :
-		case 'poweroff'  :
-		default          : {
-			command = 'power off';
-			msg     = msgs.off;
-		}
-	}
-
-	log.module('Sending cassette control: ' + command);
-
-	bus.data.send({
-		src : module_name,
-		dst : 'BMBT',
-		msg : msg,
-	});
-}
-
-function volume_control(value = 1) {
-	if (config.chassis.model !== 'e39') return;
-
-	let msg_value;
-	switch (value) {
-		case 5 : msg_value = 0x51; break;
-		case 4 : msg_value = 0x41; break;
-		case 3 : msg_value = 0x31; break;
-		case 2 : msg_value = 0x21; break;
-		case 1 : msg_value = 0x11; break;
-
-		case -5 : msg_value = 0x50; break;
-		case -4 : msg_value = 0x40; break;
-		case -3 : msg_value = 0x30; break;
-		case -2 : msg_value = 0x20; break;
-		case -1 : msg_value = 0x10; break;
-
-		default : return;
-	}
-
-	// log.module('Sending volume control: ' + value);
-
-	bus.data.send({
-		src : 'MID',
-		dst : module_name,
-		msg : [ 0x32, msg_value ],
-	});
-}
-
-
-// Power on DSP amp and GPIO pin for amplifier
-function audio_power(power_state) {
-	if (config.chassis.model !== 'e39') return;
-
-	// Bounce if we're not configured to emulate the RAD module
-	if (config.emulate.rad !== true) return;
-
-	switch (power_state) {
-		case 'toggle' : {
-			log.module('Toggling audio power, current source: ' + status.rad.source_name);
-			audio_power((status.rad.source_name === 'off'));
-			return;
-		}
-
-		case 0     :
-		case 'off' :
-		case false : {
-			log.module('Setting audio power to state : ' + power_state);
-
-			audio_control(false);
-			cassette_control(false);
-
-			update.status('dsp.ready', false);
-			update.status('dsp.reset', true);
-
-			break;
-		}
-
-		case 1    :
-		case 'on' :
-		case true : {
-			if (status.power.active !== true) return;
-
-			log.module('Setting audio power to state : ' + power_state);
-
-			// Send device status
-			bus.cmds.send_device_status(module_name);
-
-			// Request status from BMBT, CDC, DSP, and MID (this should be a loop)
-			let array_request = [ 'BMBT', 'CDC', 'DSP', 'MID' ];
-			array_request.forEach((module_request) => {
-				bus.cmds.request_device_status(module_name, module_request);
-			});
-
-			// Set DSP source to whatever is configured
-			audio_control(config.media.dsp.default_source);
-
-			// Turn on BMBT
-			setTimeout(() => { cassette_control(true); }, 250);
-
-			// DSP powers up with volume set to 0, so bring up volume by configured amount
-			setTimeout(() => {
-				for (let pass = 0; pass < config.rad.power_on_volume; pass++) {
-					setTimeout(() => { volume_control(5); }, 6 * pass);
-				}
-			}, 350);
-		}
-	}
-}
-
-
-function init_listeners() {
-	// Bounce if we're not configured to emulate the RAD module or not in an E39
-	if (config.chassis.model !== 'e39') return;
-	if (config.emulate.rad   !== true)  return;
-
-	// Perform commands on power lib active event
-	update.on('status.power.active', (data) => {
-		setTimeout(() => { audio_power(data.new); }, 150);
-	});
-
-	// Kick DSP amp on engine restart
-	IKE.on('ignition-start-end', () => {
-		setTimeout(() => { audio_power(true); }, 500);
-	});
-
-	log.msg('Initialized listeners');
+	return data;
 }
 
 
